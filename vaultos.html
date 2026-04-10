@@ -23,6 +23,22 @@
     --glow3: 0 0 20px rgba(0,255,136,0.3);
   }
 
+  body.light-theme {
+    --bg: #eef3fb;
+    --panel: #ffffff;
+    --border: #c8d6ea;
+    --accent: #0066cc;
+    --accent2: #d6336c;
+    --accent3: #0a8f5a;
+    --warn: #c67a00;
+    --text: #1f2d3d;
+    --text-dim: #5f7287;
+    --text-bright: #0f1720;
+    --glow: 0 0 20px rgba(0,102,204,0.18);
+    --glow2: 0 0 20px rgba(214,51,108,0.18);
+    --glow3: 0 0 20px rgba(10,143,90,0.18);
+  }
+
   * { margin:0; padding:0; box-sizing:border-box; }
 
   body {
@@ -46,6 +62,13 @@
     pointer-events:none;
     z-index:0;
   }
+
+  body.light-theme::before {
+    background-image:
+      linear-gradient(rgba(0,102,204,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,102,204,0.05) 1px, transparent 1px);
+  }
+
   @keyframes gridScroll {
     0%{background-position:0 0}
     100%{background-position:40px 40px}
@@ -59,6 +82,16 @@
     background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);
     pointer-events:none;
     z-index:0;
+  }
+
+  body.light-theme::after {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,0.08) 2px,
+      rgba(255,255,255,0.08) 4px
+    );
   }
 
   /* ── SCREENS ── */
@@ -277,6 +310,8 @@
     border-right: 1px solid var(--border);
     padding: 20px 0;
     flex-shrink:0;
+    display:flex;
+    flex-direction:column;
   }
   .sidebar-section {
     padding: 0 16px 16px;
@@ -650,6 +685,7 @@
     <span id="topUserBadge" class="badge badge-user">USER</span>
     <span class="topbar-user" id="topUsername"></span>
     <div class="enc-label"><span class="enc-dot"></span> AES-256 ACTIVE</div>
+    <button class="btn-sm" id="themeToggleBtn" onclick="toggleTheme()">☀ LIGHT</button>
     <button class="btn-sm" onclick="doLogout()">LOGOUT</button>
   </div>
 
@@ -820,8 +856,6 @@
   </div><!-- /app-body -->
 </div><!-- /appScreen -->
 
-<!-- Upload modal (not needed, inline form used) -->
-
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -877,6 +911,7 @@ function fakeKey() {
 let currentUser = null;
 let sessionToken = '';
 let loginTime = '';
+let currentTheme = localStorage.getItem('vaultTheme') || 'dark';
 
 /* ════════════════════════════════════════════════════════════
    AUTH
@@ -937,6 +972,30 @@ function doLogout() {
 }
 
 /* ════════════════════════════════════════════════════════════
+   THEME
+════════════════════════════════════════════════════════════ */
+function applyTheme(theme) {
+  currentTheme = theme;
+
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+  } else {
+    document.body.classList.remove('light-theme');
+  }
+
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) {
+    btn.textContent = theme === 'light' ? '🌙 DARK' : '☀ LIGHT';
+  }
+
+  localStorage.setItem('vaultTheme', theme);
+}
+
+function toggleTheme() {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+}
+
+/* ════════════════════════════════════════════════════════════
    APP INIT
 ════════════════════════════════════════════════════════════ */
 function showApp() {
@@ -966,12 +1025,11 @@ function showView(name) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const v = document.getElementById('view-'+name);
   if(v) v.classList.add('active');
-  // activate nav
+
   document.querySelectorAll('.nav-item').forEach(n=>{
     if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes(`'${name}'`)) n.classList.add('active');
   });
 
-  // Render
   if(name==='files')     renderMyFiles();
   if(name==='shared')    renderShared();
   if(name==='logs')      renderMyLogs();
@@ -1089,13 +1147,11 @@ function doUpload() {
   const shareRaw = document.getElementById('shareWith').value.trim();
 
   const shareList = shareRaw ? shareRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
-  // always include owner
   const readList = [currentUser.username, ...shareList];
   const writeList = allowWrite ? [currentUser.username, ...shareList] : [currentUser.username];
   const deleteList = allowDelete ? [currentUser.username, ...shareList] : [currentUser.username];
 
   const ext = name.split('.').pop().toLowerCase();
-  const sizes = ['KB','MB'];
   const fakeSize = (Math.random()*10).toFixed(1)+' '+(Math.random()>0.5?'MB':'KB');
 
   const newFile = {
@@ -1108,7 +1164,6 @@ function doUpload() {
   DB.files.push(newFile);
   addLog(currentUser.username,'INFO',`File uploaded: ${name} [AES-256 encrypted, key: ${fakeKey()}]`);
 
-  // Reset form
   document.getElementById('fileInput').value='';
   document.getElementById('uploadFileName').value='';
   document.getElementById('uploadDesc').value='';
@@ -1267,6 +1322,8 @@ function toast(msg, type='') {
   document.getElementById('toastContainer').appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(100%)'; t.style.transition='all .3s'; setTimeout(()=>t.remove(),300); }, 3000);
 }
+
+applyTheme(currentTheme);
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e=>{
